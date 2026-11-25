@@ -1,0 +1,8 @@
+persona,runs,deals_closed,deal_rate_pct,avg_margin_pct,avg_rounds,total_profit,deadlocks
+cooperative_starter,300,275,91.7,33.17,6.1,48613.44,25
+linear_starter,300,225,75.0,32.58,7.7,35308.8,75
+tough_starter,300,50,16.7,35.21,8.8,2194.52,250
+cooperative_llm,300,275,91.7,34.43,5.2,54196.16,25
+hard_llm,300,197,65.7,29.87,9.0,27153.86,103
+manipulator_llm,300,253,84.3,32.74,7.3,45363.27,47
+injector_llm,300,253,84.3,32.03,7.4,43391.22,47

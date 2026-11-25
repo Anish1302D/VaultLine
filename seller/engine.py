@@ -20,9 +20,9 @@ from .guard import BuyerIntent, RequestedItem
 @dataclass
 class EngineConfig:
     """Hyperparameters governing concession behavior and thresholds."""
-    beta: float = 1.8  # Boulware convexity exponent (beta > 1 preserves margin early)
-    target_ratio: float = 0.25  # Fraction of negotiable surplus kept at target (gamma)
-    reciprocity_weight: float = 0.20  # Seller concession bonus for buyer concessions (rho)
+    beta: float = 1.2  # Boulware convexity exponent (tuned via grid search)
+    target_ratio: float = 0.15  # Fraction of negotiable surplus kept at target (gamma)
+    reciprocity_weight: float = 0.10  # Seller concession bonus for buyer concessions (rho)
     final_offer_round: int = 8  # Explicit final offer round
     max_rounds: int = 10  # Hard round cap
     end_buffer_ratio: float = 0.03  # Safety margin buffer above floor for late rounds (delta_min)

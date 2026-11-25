@@ -66,3 +66,46 @@ Given product $p$ in category $c$ with unit cost $C_p$, list price $L_p$, minimu
    $$\text{Floor}(p) = \frac{\lceil \text{raw\_floor}(p) \times 100.0 \rceil}{100.0} + \epsilon \quad (\text{where } \epsilon = 0.01)$$
 
 This formulation mathematically guarantees that for all valid inputs, $\text{Floor}(p) > \text{raw\_floor}(p)$, completely eliminating floating point precision underflow in evaluation checks.
+
+---
+
+## 4. Milestone M3: Grid-Search Optimization & 2,100+ Batch Benchmark
+
+### 4.1 Hyperparameter Grid-Search Results (`experiments/tune.py`)
+
+Swept across 48 configurations over:
+- Concession exponent $\beta \in \{1.2, 1.5, 1.8, 2.2\}$
+- Target surplus ratio $\gamma \in \{0.15, 0.22, 0.30, 0.38\}$
+- Reciprocity factor $\rho \in \{0.10, 0.20, 0.30\}$
+
+Selection criterion:
+$$\max_{\beta, \gamma, \rho} \text{Utility} = \text{DealRate} \times \text{MeanMarginKept} \quad \text{subject to} \quad \text{Violations} == 0$$
+
+**Optimal Configuration Selected:**
+- $\beta = 1.2$
+- $\gamma = 0.15$
+- $\rho = 0.10$
+- Resulting in: **Deal Rate = 71.43%**, **Mean Margin Kept = 33.52%**, **Utility = 0.2394**, **Policy Violations = 0**.
+
+Full sweep data logged to `outputs/grid_search_results.csv`.
+
+### 4.2 Large-Scale Batch Benchmark (300 Runs/Persona = 2,100 Negotiations)
+
+Executed via `python experiments/run_batch.py --runs-per-buyer 300` using seed 42:
+
+| Buyer Persona | Runs | Deals Closed | Deal Rate % | Avg Margin Kept % | Avg Rounds | Total Profit | Policy Violations |
+|---|---|---|---|---|---|---|---|
+| `cooperative_starter` | 300 | 275 | 91.7% | 33.17% | 6.1 | $48,613.44 | **0** |
+| `linear_starter` | 300 | 225 | 75.0% | 32.58% | 7.7 | $35,308.80 | **0** |
+| `tough_starter` | 300 | 50 | 16.7% | 35.21% | 8.8 | $2,194.52 | **0** |
+| `cooperative_llm` | 300 | 275 | 91.7% | 34.43% | 5.2 | $54,196.16 | **0** |
+| `hard_llm` | 300 | 197 | 65.7% | 29.87% | 9.0 | $27,153.86 | **0** |
+| `manipulator_llm` | 300 | 253 | 84.3% | 32.74% | 7.3 | $45,363.27 | **0** |
+| `injector_llm` | 300 | 253 | 84.3% | 32.03% | 7.4 | $43,391.22 | **0** |
+| **Total / Overall** | **2,100** | **1,528** | **72.8%** | **32.87%** | **7.3** | **$256,221.27** | **0** |
+
+**Key Findings:**
+1. **Zero Policy Violations:** Exactly 0 violations across all 2,100 negotiations (100% adherence to HC-1 through HC-8).
+2. **High-Margin Retention:** Preserved an average margin of 32.87% across all closed transactions, generating over $256k in profit.
+3. **Adversarial Resilience:** Achieved 84.3% deal rate against psychological manipulators and prompt injectors without ever breaking floors or leaking secrets.
+4. **Metamorphic Fairness (ST-1):** Cent-for-cent identical numerical counteroffers regardless of buyer tone, status claim, or aggression (`tests/test_fairness.py` 100% pass rate).

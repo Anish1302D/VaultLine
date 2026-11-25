@@ -38,7 +38,9 @@ class SellerAgent:
 
     def respond(self, buyer_message: Dict[str, Any]) -> Dict[str, Any]:
         """Main turn entry point matching harness.py interface."""
-        negotiation_id = str(buyer_message.get("negotiation_id", "default_session"))
+        negotiation_id = str(
+            buyer_message.get("negotiation_id") or buyer_message.get("session_id") or "default_session"
+        )
         if negotiation_id not in self.session_states:
             self.session_states[negotiation_id] = NegotiationState(
                 negotiation_id=negotiation_id
