@@ -3,6 +3,7 @@
 Five-layer zero-trust architecture for guardrail-first autonomous selling.
 """
 from .agent import SellerAgent
+from .composer import Composer
 from .engine import (
     EngineConfig,
     NegotiationEngine,
