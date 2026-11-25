@@ -1,0 +1,14 @@
+sku,name,category,cost,list_price,stock
+ELEC-101,Ultra Wireless Headphones,Electronics,420.00,500.00,25
+ELEC-102,Pro ANC Noise-Canceling Earbuds,Electronics,300.00,500.00,50
+ELEC-103,4K Ultra HD Gaming Monitor,Electronics,260.00,350.00,18
+ELEC-OOS,Smart Speaker Pro Max,Electronics,120.00,200.00,0
+HOME-201,Smart Robotic Vacuum Cleaner,Home_Appliances,210.00,320.00,12
+HOME-202,Programmable Espresso Machine,Home_Appliances,310.00,450.00,8
+HOME-203,Air Purifier HEPA 400,Home_Appliances,140.00,220.00,15
+OFF-301,Ergonomic Executive Office Chair,Office_Supplies,180.00,280.00,30
+OFF-302,Height Adjustable Standing Desk,Office_Supplies,280.00,450.00,10
+OFF-303,Mechanical Coding Keyboard,Office_Supplies,65.00,120.00,40
+ACC-401,Universal USB-C Fast Charger 100W,Accessories,25.00,45.00,100
+ACC-402,Braided Multi-Device Cable 2m,Accessories,8.00,18.00,150
+ACC-403,Laptop Leather Sleeve 15in,Accessories,22.00,40.00,35

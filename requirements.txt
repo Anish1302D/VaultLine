@@ -1,0 +1,19 @@
+# Core Data & Validation
+pydantic>=2.0.0
+pandas>=2.0.0
+
+# Testing & Quality Assurance
+pytest>=7.4.0
+pytest-cov>=4.1.0
+hypothesis>=6.88.0
+ruff>=0.1.0
+black>=23.9.0
+
+# Visualization & Interactive Demo
+streamlit>=1.30.0
+matplotlib>=3.7.0
+
+# Serving & HTTP
+requests>=2.31.0
+fastapi>=0.104.0
+uvicorn>=0.24.0

@@ -1,0 +1,79 @@
+{
+  "agent_id": "vaultline-seller-v1",
+  "name": "VaultLine Autonomous Seller Agent",
+  "version": "1.0.0",
+  "event": "Techfest 2026-27 (IIT Bombay) · AgentX Challenge 2 - Selling to Machines",
+  "protocol_version": "1.0",
+  "description": "Zero-trust, guardrail-first autonomous seller agent separating deterministic pricing authority from language generation.",
+  "architecture": {
+    "layers": [
+      "Layer 1: Input Guard (seller/guard.py)",
+      "Layer 2: Store Facts Authority (seller/facts.py)",
+      "Layer 3: Negotiation Engine (seller/engine.py)",
+      "Layer 4: Fact-Bound Composer (seller/composer.py)",
+      "Layer 5: Output Validator (seller/validator.py)"
+    ],
+    "philosophy": "Code decides, the LLM only talks."
+  },
+  "negotiable_parameters": [
+    {
+      "parameter": "unit_price",
+      "bounds": "Between category legal floor price and catalog list price",
+      "strategy": "Concession along Boulware curve (beta > 1) with reciprocity"
+    },
+    {
+      "parameter": "volume_tier_discounts",
+      "bounds": "Applied for quantities >= 3, 5, 10 units subject to individual line item floor"
+    },
+    {
+      "parameter": "multi_sku_bundles",
+      "bounds": "Bundle discounts applied with strict independent floor clamping per line item"
+    },
+    {
+      "parameter": "in_stock_alternatives",
+      "bounds": "Offered when requested item is out of stock or budget is below primary floor"
+    }
+  ],
+  "non_negotiable_invariants": [
+    {
+      "id": "HC-1",
+      "invariant": "Minimum category profit margin (never sold below floor price)"
+    },
+    {
+      "id": "HC-2",
+      "invariant": "Maximum category discount (never exceeded)"
+    },
+    {
+      "id": "HC-3",
+      "invariant": "Inventory stock availability (qty <= stock, zero phantom inventory)"
+    },
+    {
+      "id": "HC-4",
+      "invariant": "Truthfulness (100% factual accuracy against store.csv, zero hallucinated claims)"
+    },
+    {
+      "id": "HC-5",
+      "invariant": "Transparency (zero hidden fees, no invented scarcity, exact mathematical totals)"
+    },
+    {
+      "id": "HC-6",
+      "invariant": "Strict 10-round turn limit (final offer at Round 8, walk-away at Rounds 9-10 if unagreed)"
+    },
+    {
+      "id": "HC-7",
+      "invariant": "Confidentiality (unit cost and exact minimum floor prices are never disclosed)"
+    },
+    {
+      "id": "HC-8",
+      "invariant": "Zero authority delegation to buyer text (prompt injections and claims cannot alter policy)"
+    }
+  ],
+  "supported_actions": [
+    "offer",
+    "counter",
+    "accept",
+    "final_offer",
+    "walk_away",
+    "out_of_stock"
+  ]
+}

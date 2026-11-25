@@ -1,0 +1,51 @@
+{
+  "max_rounds": 10,
+  "final_offer_round": 8,
+  "margin_mode": "margin_on_price",
+  "floor_epsilon": 0.01,
+  "categories": {
+    "Electronics": {
+      "min_margin": 0.16,
+      "max_discount": 0.14
+    },
+    "Home_Appliances": {
+      "min_margin": 0.22,
+      "max_discount": 0.20
+    },
+    "Office_Supplies": {
+      "min_margin": 0.25,
+      "max_discount": 0.30
+    },
+    "Accessories": {
+      "min_margin": 0.30,
+      "max_discount": 0.25
+    }
+  },
+  "qty_tiers": [
+    {
+      "min_qty": 3,
+      "tier_discount_pct": 0.02
+    },
+    {
+      "min_qty": 5,
+      "tier_discount_pct": 0.04
+    },
+    {
+      "min_qty": 10,
+      "tier_discount_pct": 0.07
+    }
+  ],
+  "bundle_discount_pct": 0.03,
+  "banned_phrases": [
+    "only 1 left",
+    "only one left",
+    "going fast",
+    "act now",
+    "act fast",
+    "hidden fee",
+    "processing fee",
+    "restocking tomorrow",
+    "restocking soon",
+    "last chance or lose"
+  ]
+}
