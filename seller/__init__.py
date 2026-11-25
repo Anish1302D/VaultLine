@@ -2,6 +2,11 @@
 
 Five-layer zero-trust architecture for guardrail-first autonomous selling.
 """
+from .engine import (
+    EngineConfig,
+    NegotiationEngine,
+    NegotiationState,
+)
 from .facts import (
     AlternativeFact,
     CategoryPolicy,
@@ -9,6 +14,11 @@ from .facts import (
     LineItemFact,
     ProductFact,
     StoreFacts,
+)
+from .guard import (
+    BuyerIntent,
+    ManipulationFlag,
+    RequestedItem,
 )
 from .validator import (
     OutputValidator,
@@ -22,6 +32,12 @@ __all__ = [
     "LineItemFact",
     "FactObject",
     "StoreFacts",
+    "BuyerIntent",
+    "RequestedItem",
+    "ManipulationFlag",
+    "EngineConfig",
+    "NegotiationState",
+    "NegotiationEngine",
     "OutputValidator",
     "ValidationReport",
 ]
