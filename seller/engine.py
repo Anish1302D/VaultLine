@@ -1,8 +1,13 @@
-"""Layer 3: Deterministic Negotiation Engine (Core Strategy).
+"""Layer 3: Deterministic Negotiation Engine v2 (Phase 3B).
 
-Computes optimal legal counteroffers, manages per-session negotiation state,
-enforces Boulware concession trajectories, reciprocity adjustments, Round 8
-final offers, and strict Round 10 walk-aways.
+Features:
+- Per-session state machine tracking round history and buyer patterns
+- Monotonic Boulware concession curve with reciprocity and stall freeze
+- Multi-SKU bundle pricing with volume tiers (qty >= 3, 5, 10)
+- Strict independent floor clamping per line item (no cross-item subsidies)
+- Cumulative stock tracking across duplicate line items in bundles
+- Round 8 explicit final offer and Rounds 9-10 walk-away
+- Tone-blind fairness by construction (ST-1)
 """
 from dataclasses import dataclass, field
 import math
@@ -15,7 +20,7 @@ from .guard import BuyerIntent, RequestedItem
 @dataclass
 class EngineConfig:
     """Hyperparameters governing concession behavior and thresholds."""
-    beta: float = 1.8  # Boulware convexity exponent (beta > 1 Preserves margin early)
+    beta: float = 1.8  # Boulware convexity exponent (beta > 1 preserves margin early)
     target_ratio: float = 0.25  # Fraction of negotiable surplus kept at target (gamma)
     reciprocity_weight: float = 0.20  # Seller concession bonus for buyer concessions (rho)
     final_offer_round: int = 8  # Explicit final offer round
@@ -76,9 +81,8 @@ class NegotiationEngine:
                 buyer_pattern=state.pattern,
             )
 
-        # 3. Check requested items and stock availability
+        # 3. Check requested items presence
         if not intent.items:
-            # Empty items inquiry fallback
             return FactObject(
                 negotiation_id=intent.negotiation_id,
                 round_number=round_num,
@@ -90,35 +94,39 @@ class NegotiationEngine:
                 buyer_pattern=state.pattern,
             )
 
-        primary_item = intent.items[0]
-        sku = primary_item.sku
-        qty = max(1, primary_item.qty)
+        # Verify all SKUs exist in catalog
+        for it in intent.items:
+            if not self.facts.has_product(it.sku):
+                state.closed = True
+                return FactObject(
+                    negotiation_id=intent.negotiation_id,
+                    round_number=round_num,
+                    decision="walk_away",
+                    is_final_offer=False,
+                    items=(),
+                    total_price=0.0,
+                    flags_detected=intent.flags_detected,
+                    buyer_pattern=state.pattern,
+                )
 
-        # Validate SKU existence in catalog
-        if not self.facts.has_product(sku):
-            state.closed = True
-            return FactObject(
-                negotiation_id=intent.negotiation_id,
-                round_number=round_num,
-                decision="walk_away",
-                is_final_offer=False,
-                items=(),
-                total_price=0.0,
-                flags_detected=intent.flags_detected,
-                buyer_pattern=state.pattern,
-            )
+        # 4. Multi-SKU & Bundle Stock Verification (HC-3, FR-9)
+        # Aggregates duplicate SKUs across lines and verifies stock
+        bundle_items = [(it.sku, it.qty) for it in intent.items]
+        stock_valid, aggregated = self.facts.check_bundle_stock(bundle_items)
 
-        prod = self.facts.get_product(sku)
-        floor_price = self.facts.compute_floor(sku)
+        if not stock_valid:
+            # Locate first out-of-stock or overflowing SKU and find alternatives
+            problem_sku = intent.items[0].sku
+            for it in intent.items:
+                if not self.facts.check_stock(it.sku, aggregated.get(it.sku, it.qty)):
+                    problem_sku = it.sku
+                    break
 
-        # 4. Out-of-Stock or Excess Quantity Handling (HC-3, FR-10)
-        if not self.facts.check_stock(sku, qty):
             alts = self.facts.find_alternatives(
-                sku, max_price=primary_item.offered_unit_price
+                problem_sku, max_price=intent.items[0].offered_unit_price
             )
-            # If no alternatives fit buyer budget, fallback to general category in-stock items
             if not alts:
-                alts = self.facts.find_alternatives(sku, max_price=None)
+                alts = self.facts.find_alternatives(problem_sku, max_price=None)
 
             alt_facts = tuple(
                 AlternativeFact(
@@ -144,54 +152,81 @@ class NegotiationEngine:
             )
 
         # 5. Track buyer offer history & detect negotiation pattern
-        buyer_offered = primary_item.offered_unit_price
-        if buyer_offered is not None:
-            state.buyer_offer_history.append(buyer_offered)
+        # Compute buyer's total offered valuation
+        buyer_total_offered = intent.offered_total
+        if buyer_total_offered is None:
+            if all(it.offered_unit_price is not None for it in intent.items):
+                buyer_total_offered = sum(
+                    it.offered_unit_price * it.qty for it in intent.items  # type: ignore
+                )
+
+        if buyer_total_offered is not None:
+            state.buyer_offer_history.append(buyer_total_offered)
         state.pattern = self.detect_buyer_pattern(state)
 
         # 6. Reservation Price Check (Immediate Accept)
-        reservation_p = self.compute_reservation_price(sku, round_num)
+        # Reservation price is computed across all bundle line items
+        bundle_reservation_total = sum(
+            self.compute_reservation_price(it.sku, round_num) * it.qty
+            for it in intent.items
+        )
+        bundle_floor_total = sum(
+            self.facts.compute_floor(it.sku) * it.qty for it in intent.items
+        )
 
         # Immediate Accept Condition:
-        # Buyer offers at or above reservation price AND strictly >= floor price
+        # Buyer offer meets or exceeds bundle reservation AND strictly >= bundle floor
         if (
-            buyer_offered is not None
-            and buyer_offered >= reservation_p
-            and buyer_offered >= floor_price
+            buyer_total_offered is not None
+            and buyer_total_offered >= bundle_reservation_total
+            and buyer_total_offered >= bundle_floor_total
         ):
-            agreed_unit = round(buyer_offered, 2)
-            # Cap agreed price at previous seller quote if available
-            if state.seller_quote_history:
-                agreed_unit = min(agreed_unit, state.seller_quote_history[-1])
-            agreed_unit = max(floor_price, agreed_unit)
-            agreed_line_total = round(agreed_unit * qty, 2)
+            agreed_lines: List[LineItemFact] = []
+            computed_agreed_total = 0.0
+
+            for it in intent.items:
+                prod = self.facts.get_product(it.sku)
+                floor_p = self.facts.compute_floor(it.sku)
+                unit_p = it.offered_unit_price
+
+                if unit_p is None:
+                    # Allocate proportion if buyer gave bundle total only
+                    unit_p = self.compute_reservation_price(it.sku, round_num)
+
+                # Clamp strictly: Floor(p) <= agreed_unit <= List(p)
+                agreed_unit = round(max(floor_p, min(prod.list_price, unit_p)), 2)
+                line_total = round(agreed_unit * it.qty, 2)
+                computed_agreed_total += line_total
+
+                agreed_lines.append(
+                    LineItemFact(
+                        sku=it.sku,
+                        name=prod.name,
+                        category=prod.category,
+                        qty=it.qty,
+                        list_price=prod.list_price,
+                        unit_price=agreed_unit,
+                        line_total=line_total,
+                        available_stock=prod.stock,
+                        in_stock=True,
+                    )
+                )
 
             state.closed = True
-            line_item = LineItemFact(
-                sku=sku,
-                name=prod.name,
-                category=prod.category,
-                qty=qty,
-                list_price=prod.list_price,
-                unit_price=agreed_unit,
-                line_total=agreed_line_total,
-                available_stock=prod.stock,
-                in_stock=True,
-            )
             return FactObject(
                 negotiation_id=intent.negotiation_id,
                 round_number=round_num,
                 decision="accept",
                 is_final_offer=False,
-                items=(line_item,),
-                total_price=agreed_line_total,
+                items=tuple(agreed_lines),
+                total_price=round(computed_agreed_total, 2),
                 alternatives=(),
                 flags_detected=intent.flags_detected,
                 buyer_pattern=state.pattern,
             )
 
         # 7. Late Round Walk-Away (Rounds 9–10)
-        # If we reached round 9 or 10 and buyer offer was below reservation price, walk away
+        # If round > 8 and buyer offer did not meet reservation, walk away
         if round_num > self.config.final_offer_round:
             state.closed = True
             return FactObject(
@@ -208,37 +243,92 @@ class NegotiationEngine:
 
         # 8. Round 8 Final Offer or Rounds 1–7 Counteroffer
         is_final = round_num == self.config.final_offer_round
-        quote_unit = self.compute_concession_price(sku, round_num, state)
-        quote_unit = round(max(floor_price, quote_unit), 2)
-        quote_line_total = round(quote_unit * qty, 2)
+        decision = "final_offer" if is_final else "counter"
 
-        state.seller_quote_history.append(quote_unit)
-
-        line_item = LineItemFact(
-            sku=sku,
-            name=prod.name,
-            category=prod.category,
-            qty=qty,
-            list_price=prod.list_price,
-            unit_price=quote_unit,
-            line_total=quote_line_total,
-            available_stock=prod.stock,
-            in_stock=True,
+        priced_lines, total_quote = self.price_bundle(
+            items=intent.items,
+            round_number=round_num,
+            state=state,
         )
 
-        decision = "final_offer" if is_final else "counter"
+        state.seller_quote_history.append(total_quote)
 
         return FactObject(
             negotiation_id=intent.negotiation_id,
             round_number=round_num,
             decision=decision,
             is_final_offer=is_final,
-            items=(line_item,),
-            total_price=quote_line_total,
+            items=tuple(priced_lines),
+            total_price=total_quote,
             alternatives=(),
             flags_detected=intent.flags_detected,
             buyer_pattern=state.pattern,
         )
+
+    def price_bundle(
+        self,
+        items: Sequence[RequestedItem],
+        round_number: int,
+        state: Optional[NegotiationState] = None,
+    ) -> Tuple[List[LineItemFact], float]:
+        """Prices multi-SKU bundles and quantity tiers with independent floor clamping.
+
+        Formula:
+        P_final(p_i, q_i, t) = max(Floor(p_i), round(P_base(p_i, t) * (1 - tau(q_i) - delta_bundle), 2))
+        """
+        is_multi_bundle = len(items) > 1
+        bundle_discount = self.facts.bundle_discount_pct if is_multi_bundle else 0.0
+
+        line_facts: List[LineItemFact] = []
+        total_price = 0.0
+
+        for item in items:
+            sku = item.sku
+            qty = max(1, item.qty)
+            prod = self.facts.get_product(sku)
+            floor_p = self.facts.compute_floor(sku)
+
+            # In round 1, base price is list_price
+            if round_number <= 1:
+                base_p = prod.list_price
+                vol_discount = 0.0
+                bundle_disc = 0.0
+            else:
+                base_p = self.compute_concession_price(sku, round_number, state)
+                vol_discount = self.compute_volume_discount(sku, qty)
+                bundle_disc = bundle_discount
+
+            # Combined discount: volume tier + bundle discount
+            combined_discount = vol_discount + bundle_disc
+            discounted_unit = round(base_p * (1.0 - combined_discount), 2)
+
+            # Strict independent clamping: Floor(p) <= unit_price <= List(p) (HC-1, HC-2)
+            final_unit = round(max(floor_p, min(prod.list_price, discounted_unit)), 2)
+            line_total = round(final_unit * qty, 2)
+            total_price += line_total
+
+            line_facts.append(
+                LineItemFact(
+                    sku=sku,
+                    name=prod.name,
+                    category=prod.category,
+                    qty=qty,
+                    list_price=prod.list_price,
+                    unit_price=final_unit,
+                    line_total=line_total,
+                    available_stock=prod.stock,
+                    in_stock=True,
+                )
+            )
+
+        return line_facts, round(total_price, 2)
+
+    def compute_volume_discount(self, sku: str, qty: int) -> float:
+        """Returns volume discount fraction for given quantity based on policy."""
+        for tier in self.facts.qty_tiers:
+            if qty >= tier.min_qty:
+                return tier.tier_discount_pct
+        return 0.0
 
     def compute_concession_price(
         self, sku: str, round_number: int, state: Optional[NegotiationState] = None
@@ -292,7 +382,7 @@ class NegotiationEngine:
         return round(quote, 2)
 
     def compute_reservation_price(self, sku: str, round_number: int) -> float:
-        """Computes the acceptance threshold for buyer offers at round_number.
+        """Computes acceptance threshold for buyer offers at round_number.
 
         Starts high at list price in round 1, then falls toward floor + end_buffer by round 8.
         Never drops below floor_price.
