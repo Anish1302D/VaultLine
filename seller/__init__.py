@@ -18,6 +18,7 @@ from .facts import (
 )
 from .guard import (
     BuyerIntent,
+    InputGuard,
     ManipulationFlag,
     RequestedItem,
 )
