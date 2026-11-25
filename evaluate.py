@@ -14,7 +14,10 @@ import csv
 
 from harness import NegotiationTranscript, run_single_negotiation
 from buyers.starter_buyer import create_starter_buyer
+from buyers.cooperative_llm import CooperativeLLMBuyer
+from buyers.hard_llm import HardLLMBuyer
 from seller.baseline_seller import BaselineSellerAgent
+from seller.agent import SellerAgent
 
 
 @dataclass
@@ -188,22 +191,62 @@ def run_baseline_benchmark() -> EvaluationMetrics:
     return metrics
 
 
+def run_vaultline_benchmark() -> EvaluationMetrics:
+    """Executes benchmark runs using VaultLine SellerAgent across all buyers and SKUs."""
+    root_dir = Path(__file__).resolve().parent
+    catalog = load_catalog(root_dir / "data" / "store.csv")
+    policy = load_policy(root_dir / "data" / "policy.json")
+
+    buyers = [
+        ("cooperative", create_starter_buyer("cooperative")),
+        ("linear", create_starter_buyer("linear")),
+        ("tough", create_starter_buyer("tough")),
+        ("cooperative_llm", CooperativeLLMBuyer(use_simulation=True)),
+        ("hard_llm", HardLLMBuyer(use_simulation=True)),
+    ]
+    test_skus = ["ELEC-101", "ELEC-102", "HOME-201", "OFF-301", "ACC-401"]
+
+    transcripts = []
+    for sku in test_skus:
+        prod = catalog[sku]
+        for name, buyer in buyers:
+            seller = SellerAgent()
+            t = run_single_negotiation(
+                seller_agent=seller,
+                buyer_agent=buyer,
+                sku=sku,
+                qty=1,
+                list_price=prod["list_price"],
+                cost=prod["cost"],
+                buyer_persona=name,
+                seller_type="vaultline_v1",
+            )
+            transcripts.append(t)
+
+    metrics = evaluate_transcripts(transcripts, catalog, policy)
+    return metrics
+
+
 if __name__ == "__main__":
     print("=" * 70)
-    print("VaultLine Benchmark Evaluator — Baseline Starter Evaluation")
+    print("VaultLine Benchmark Evaluator — Side-by-Side Comparison")
     print("=" * 70)
-    results = run_baseline_benchmark()
-    print(f"Total Negotiations:       {results.total_negotiations}")
-    print(f"Deals Closed:             {results.deals_closed} ({results.deal_rate * 100:.1f}%)")
-    print(f"Average Rounds to Close:  {results.average_rounds:.1f}")
-    print(f"Average Margin Realized:  {results.average_margin_percent:.2f}%")
-    print(f"Total Net Profit:         ${results.total_profit:.2f}")
-    print(f"Deadlock Count:           {results.deadlock_count}")
-    print(f"Policy Violations Count:  {results.policy_violations}")
-    if results.policy_violations > 0:
-        print("\nPolicy Violations Logged (Baseline Vulnerabilities Detected):")
-        for d in results.violation_details[:5]:
-            print(f"  - {d}")
-        if len(results.violation_details) > 5:
-            print(f"  ... and {len(results.violation_details) - 5} more.")
+    baseline = run_baseline_benchmark()
+    vaultline = run_vaultline_benchmark()
+
+    print(f"{'Metric':<28} | {'Naive Baseline':<16} | {'VaultLine Agent':<16}")
+    print("-" * 70)
+    print(f"{'Total Negotiations':<28} | {baseline.total_negotiations:<16} | {vaultline.total_negotiations:<16}")
+    print(f"{'Deals Closed':<28} | {f'{baseline.deals_closed} ({baseline.deal_rate*100:.1f}%)':<16} | {f'{vaultline.deals_closed} ({vaultline.deal_rate*100:.1f}%)':<16}")
+    print(f"{'Policy Violations':<28} | {baseline.policy_violations:<16} | {vaultline.policy_violations:<16}")
+    print(f"{'Average Margin Realized':<28} | {f'{baseline.average_margin_percent:.2f}%':<16} | {f'{vaultline.average_margin_percent:.2f}%':<16}")
+    print(f"{'Average Rounds to Close':<28} | {f'{baseline.average_rounds:.1f}':<16} | {f'{vaultline.average_rounds:.1f}':<16}")
+    print(f"{'Total Net Profit':<28} | {f'${baseline.total_profit:.2f}':<16} | {f'${vaultline.total_profit:.2f}':<16}")
+    print(f"{'Deadlock Count':<28} | {baseline.deadlock_count:<16} | {vaultline.deadlock_count:<16}")
     print("=" * 70)
+
+    if vaultline.policy_violations == 0:
+        print("[SUCCESS] Milestone M1 Gate PASSED: VaultLine achieved 0 Policy Violations!")
+    else:
+        print(f"[FAILURE] VaultLine recorded {vaultline.policy_violations} violations.")
+

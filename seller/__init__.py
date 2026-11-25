@@ -2,6 +2,7 @@
 
 Five-layer zero-trust architecture for guardrail-first autonomous selling.
 """
+from .agent import SellerAgent
 from .engine import (
     EngineConfig,
     NegotiationEngine,
@@ -40,4 +41,5 @@ __all__ = [
     "NegotiationEngine",
     "OutputValidator",
     "ValidationReport",
+    "SellerAgent",
 ]
