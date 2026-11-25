@@ -43,6 +43,34 @@ class AlternativeFact:
 
 
 @dataclass(frozen=True)
+class LineItemFact:
+    """Fact-locked line item quote."""
+    sku: str
+    name: str
+    category: str
+    qty: int
+    list_price: float
+    unit_price: float
+    line_total: float
+    available_stock: int
+    in_stock: bool
+
+
+@dataclass(frozen=True)
+class FactObject:
+    """Immutable output contract passed from engine to composer and validator."""
+    negotiation_id: str
+    round_number: int
+    decision: str  # "accept", "counter", "final_offer", "walk_away", "out_of_stock"
+    is_final_offer: bool
+    items: Tuple[LineItemFact, ...]
+    total_price: float
+    alternatives: Tuple[AlternativeFact, ...] = ()
+    flags_detected: Tuple[str, ...] = ()
+    buyer_pattern: str = "normal"
+
+
+@dataclass(frozen=True)
 class QuantityTier:
     """Volume tier discount rule."""
     min_qty: int
