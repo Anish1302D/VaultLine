@@ -1,7 +1,8 @@
-.PHONY: setup lint format test test-floor eval demo clean
+.PHONY: setup lint format test test-floor eval demo batch docker-build docker-test clean
 
 PYTHON ?= .venv/Scripts/python.exe
 UV ?= uv
+DOCKER ?= docker
 
 setup:
 	$(UV) venv
@@ -23,6 +24,18 @@ test-floor:
 
 eval:
 	$(PYTHON) evaluate.py
+
+demo:
+	$(PYTHON) -m streamlit run demo/app.py
+
+batch:
+	$(PYTHON) experiments/run_batch.py --runs-per-buyer 300 --output outputs/results.jsonl --summary outputs/summary_metrics.csv
+
+docker-build:
+	$(DOCKER) build -t vaultline:latest .
+
+docker-test:
+	$(DOCKER) run --rm --network none vaultline:latest
 
 clean:
 	rm -rf .pytest_cache .ruff_cache .hypothesis __pycache__ seller/__pycache__ tests/__pycache__ buyers/__pycache__

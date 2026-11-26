@@ -95,12 +95,12 @@ buyer_mode = st.sidebar.selectbox(
     ]
 )
 
-products = list(st.session_state.facts.catalog.values())
+products = [st.session_state.facts.get_product(sku) for sku in st.session_state.facts.get_all_skus()]
 sku_options = [f"{p.sku} — {p.name} (${p.list_price:.2f})" for p in products]
 selected_sku_str = st.sidebar.selectbox("Select Target Product", sku_options)
 selected_sku = selected_sku_str.split(" — ")[0]
 product_fact = st.session_state.facts.get_product(selected_sku)
-category_policy = st.session_state.facts.get_policy(product_fact.category)
+category_policy = st.session_state.facts.get_category_policy(product_fact.category)
 floor_price = st.session_state.facts.compute_floor(selected_sku)
 
 quantity = st.sidebar.number_input("Quantity", min_value=1, max_value=max(1, product_fact.stock), value=1)
