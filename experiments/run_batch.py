@@ -218,9 +218,12 @@ if __name__ == "__main__":
     print(f"{'Buyer Persona':<22} | {'Runs':<6} | {'Closed':<10} | {'Margin %':<10} | {'Rounds':<8} | {'Profit'}")
     print("-" * 75)
     for p, m in res["metrics_by_persona"].items():
+        closed_str = f"{m['deals_closed']} ({m['deal_rate_pct']}%)"
+        margin_str = f"{m['avg_margin_pct']}%"
+        profit_str = f"${m['total_profit']:.2f}"
         print(
-            f"{p:<22} | {m['runs']:<6} | {f'{m['deals_closed']} ({m['deal_rate_pct']}%)':<10} | "
-            f"{f'{m['avg_margin_pct']}%':<10} | {m['avg_rounds']:<8} | ${m['total_profit']:.2f}"
+            f"{p:<22} | {m['runs']:<6} | {closed_str:<10} | "
+            f"{margin_str:<10} | {m['avg_rounds']:<8} | {profit_str}"
         )
     print("=" * 75)
     print(f"Total Negotiations:       {res['total_negotiations']}")
