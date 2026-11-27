@@ -2,8 +2,8 @@
 **Event:** Techfest 2026-27 (IIT Bombay) · AgentX Challenge 2 – Selling to Machines  
 **Core Axiom:** *"Code decides, the LLM only talks."* The LLM has zero pricing authority.
 
-[![CI Quality Gate](https://github.com/VaultLine/VaultLine/actions/workflows/ci.yml/badge.svg)](https://github.com/VaultLine/VaultLine/actions)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![CI Quality Gate](https://github.com/Anish1302D/VaultLine/actions/workflows/ci.yml/badge.svg)](https://github.com/Anish1302D/VaultLine/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Docker Offline](https://img.shields.io/badge/docker-offline%20ready-green.svg)](Dockerfile)
 [![Policy Violations](https://img.shields.io/badge/violations-0%20(2%2C100%20runs)-brightgreen.svg)](outputs/summary_metrics.csv)
@@ -12,22 +12,23 @@
 
 ## 5-Command Quickstart
 
-Get VaultLine running in under 60 seconds:
+Get VaultLine running in under 60 seconds (cross-platform: Linux, macOS, Windows):
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/VaultLine/VaultLine.git && cd VaultLine
+git clone https://github.com/Anish1302D/VaultLine.git && cd VaultLine
 
 # 2. Setup virtual environment & install locked dependencies
 uv venv && uv pip install -r requirements.txt
+# (or: python -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt)
 
 # 3. Run full 93-test verification suite (unit, red-team, metamorphic fairness)
-.venv/Scripts/python.exe -m pytest -v
+pytest -v tests/
 
 # 4. Launch interactive dual-pane Streamlit Workbench
-.venv/Scripts/python.exe -m streamlit run demo/app.py
+streamlit run demo/app.py
 
-# 5. (Optional) Run 100% offline inside Docker
+# 5. (Optional) Run 100% offline inside Docker with zero network access
 docker build -t vaultline:latest .
 docker run --rm --network none vaultline:latest
 ```

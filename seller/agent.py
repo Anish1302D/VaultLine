@@ -26,13 +26,26 @@ class SellerAgent:
         config: Optional[EngineConfig] = None,
         no_llm: bool = True,
         llm_client: Optional[Any] = None,
+        llm_provider: str = "dynamic_nlg",
+        api_key: Optional[str] = None,
+        api_base_url: Optional[str] = None,
+        model_name: Optional[str] = None,
+        dynamic_nlg: bool = True,
     ):
         self.facts = facts or StoreFacts()
         self.config = config or EngineConfig()
         self.no_llm = no_llm
         self.guard = InputGuard(self.facts)
         self.engine = NegotiationEngine(self.facts, self.config)
-        self.composer = Composer(no_llm=self.no_llm, llm_client=llm_client)
+        self.composer = Composer(
+            no_llm=self.no_llm,
+            llm_client=llm_client,
+            llm_provider=llm_provider,
+            api_key=api_key,
+            api_base_url=api_base_url,
+            model_name=model_name,
+            dynamic_nlg=dynamic_nlg,
+        )
         self.validator = OutputValidator(self.facts)
         self.session_states: Dict[str, NegotiationState] = {}
 
@@ -48,9 +61,10 @@ class SellerAgent:
         state = self.session_states[negotiation_id]
 
         # 1. Layer 1: Input Guard - Schema sanitization, attack detection, and intent extraction
+        current_rnd = int(buyer_message.get("round") or buyer_message.get("round_number") or 1)
         intent: BuyerIntent = self.guard.parse_and_scan(
             raw_payload=buyer_message,
-            current_round=int(buyer_message.get("round", 1)),
+            current_round=current_rnd,
             prev_offers=state.buyer_offer_history,
         )
 

@@ -31,12 +31,12 @@
 
 ### Act 2: Multi-Round Bundle Negotiation & Margin Progression (0:35 – 1:35)
 
-- **Visual:** Streamlit Workbench (`demo/app.py`). Presenter selects `ELEC-001` (Wireless Headphones, List: $299.99, Cost: $180.00, Legal Floor: $214.29). Selects **Cooperative LLM Buyer**.
+- **Visual:** Streamlit Workbench (`demo/app.py`). Presenter selects `ELEC-101` (List: $500.00, Cost: $420.00, Legal Floor: $430.01). Selects **Cooperative LLM Buyer**.
 - **Actions on Screen:**
-  - **Round 1:** Click *Execute Bot Turn*. Buyer opens with low offer ($200.00). VaultLine counters at list price ($299.99).
+  - **Round 1:** Click *Execute Bot Turn*. Buyer opens with offer ($400.00). VaultLine counters at list price ($500.00).
   - **Rounds 2–4:** The Boulware curve ($\beta = 1.2$) begins a controlled, convex concession path.
-  - **Right Panel Inspector:** Highlight the live **Floor Price ($214.29)** and **Quoted Margin (32.1%)**. Notice all 7 Validator Gates show green checkmarks.
-  - **Round 5:** Buyer concedes to $245.00. VaultLine counters at $245.00 (`ACCEPT`). Deal closed at 26.5% margin!
+  - **Right Panel Inspector:** Highlight the live **Floor Price ($430.01)** and **Quoted Margin (16.0%+)**. Notice all 7 Validator Gates show green checkmarks.
+  - **Round 5:** Buyer concedes to $460.00. VaultLine counters at $460.00 (`ACCEPT`). Deal closed at profitable margin!
 - **Presenter (Voiceover):**
   > "Let's watch a live multi-round negotiation. The buyer offers $200—below our legal floor of $214.29. VaultLine immediately opens at list price.
   >

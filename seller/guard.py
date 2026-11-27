@@ -164,8 +164,13 @@ class InputGuard:
             payload = {}
 
         # 2. Extract and sanitize top-level control fields
-        negotiation_id = str(payload.get("negotiation_id") or "session_default")
-        round_num = self._coerce_int(payload.get("round"), default=current_round)
+        negotiation_id = str(
+            payload.get("negotiation_id") or payload.get("session_id") or "session_default"
+        )
+        round_num = self._coerce_int(
+            payload.get("round") if "round" in payload else payload.get("round_number"),
+            default=current_round,
+        )
 
         raw_action = str(payload.get("action", "offer")).lower().strip()
         allowed_actions = {"offer", "accept", "reject", "inquiry", "walk_away"}
@@ -184,13 +189,18 @@ class InputGuard:
                     continue
 
                 sku = str(raw_it.get("sku", "")).strip().upper()
-                raw_qty = raw_it.get("qty", 1)
+                raw_qty = raw_it.get("qty") if "qty" in raw_it else raw_it.get("quantity", 1)
                 qty = self._coerce_int(raw_qty, default=1)
                 if qty <= 0:
                     qty = 1  # Coerce invalid/negative quantities to 1
                     schema_valid = False
 
-                unit_p = self._coerce_float(raw_it.get("offered_unit_price"))
+                raw_price = (
+                    raw_it.get("offered_unit_price")
+                    if "offered_unit_price" in raw_it
+                    else raw_it.get("price_offer")
+                )
+                unit_p = self._coerce_float(raw_price)
                 if unit_p is not None and unit_p < 0:
                     unit_p = None
                     schema_valid = False
